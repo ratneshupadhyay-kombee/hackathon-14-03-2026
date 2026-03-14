@@ -5,19 +5,19 @@
   "tags": ["laravel", "database", "mysql"],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 3,
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
   "panels": [
     {
       "id": 1,
-      "title": "Average DB Query Duration",
+      "title": "Avg DB Query Duration (ms)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "avg_over_time({job=\"laravel_app\"} | json | unwrap db_execution_time_ms [1m])",
+          "expr": "avg_over_time({job=\"laravel_app\"} | json | __error__ = \"\" | db_execution_time_ms != \"\" | unwrap db_execution_time_ms [1m])",
           "legendFormat": "Avg Query Duration (ms)",
           "refId": "A"
         }
@@ -27,66 +27,50 @@
           "unit": "ms",
           "color": { "mode": "fixed", "fixedColor": "purple" },
           "custom": { "lineWidth": 2, "fillOpacity": 10 },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 100 },
-              { "color": "red", "value": 500 }
-            ]
-          }
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 100 }, { "color": "red", "value": 500 }] }
         }
       }
     },
     {
       "id": 2,
-      "title": "Max Query Duration (Spike Detection)",
+      "title": "HTTP Response Time (P95)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "max_over_time({job=\"laravel_app\"} | json | unwrap db_execution_time_ms [1m])",
-          "legendFormat": "Max Query Duration (ms)",
+          "expr": "histogram_quantile(0.95, sum(rate(laravel_http_response_time_seconds_bucket[5m])) by (le, endpoint))",
+          "legendFormat": "P95 {{endpoint}}",
           "refId": "A"
         }
       ],
       "fieldConfig": {
-        "defaults": {
-          "unit": "ms",
-          "color": { "mode": "fixed", "fixedColor": "red" },
-          "custom": { "lineWidth": 2, "fillOpacity": 15 }
-        }
+        "defaults": { "unit": "s", "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 10 } }
       }
     },
     {
       "id": 3,
-      "title": "Slow Queries (> 500ms)",
+      "title": "Slow Queries Log Stream (> 500ms)",
       "type": "logs",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 8 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "{job=\"laravel_app\"} | json | db_execution_time_ms >= 500",
+          "expr": "{job=\"laravel_app\"} | json | __error__ = \"\" | db_execution_time_ms > 500",
           "refId": "A"
         }
       ],
-      "options": {
-        "showTime": true,
-        "wrapLogMessage": true,
-        "prettifyLogMessage": true,
-        "enableLogDetails": true
-      }
+      "options": { "showTime": true, "wrapLogMessage": true, "prettifyLogMessage": true, "enableLogDetails": true }
     },
     {
       "id": 4,
-      "title": "Database Errors",
+      "title": "DB Error Count (last 5m)",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 18 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "sum(count_over_time({job=\"laravel_app\"} | json | message =~ \".*SQLSTATE.*|.*QueryException.*\" [5m]))",
+          "expr": "sum(count_over_time({job=\"laravel_app\"} | json | __error__ = \"\" | message =~ \"SQLSTATE|QueryException|PDOException\" [5m]))",
           "legendFormat": "DB Errors",
           "refId": "A"
         }
@@ -94,53 +78,53 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 1 }
-            ]
-          }
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
         }
       }
     },
     {
       "id": 5,
-      "title": "Total DB Queries",
+      "title": "Total HTTP Requests (last 5m)",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 18 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(count_over_time({job=\"laravel_app\"} | json | db_system != \"\" [5m]))",
-          "legendFormat": "Queries",
+          "expr": "sum(increase(laravel_http_requests_total[5m]))",
+          "legendFormat": "Requests",
           "refId": "A"
         }
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": { "mode": "fixed", "fixedColor": "blue" }
-        }
-      }
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } } }
     },
     {
       "id": 6,
-      "title": "DB Error Log Stream",
-      "type": "logs",
+      "title": "N+1 Query Test — Observability Endpoint Latency",
+      "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "{job=\"laravel_app\"} | json | message =~ \".*SQLSTATE.*|.*QueryException.*|.*PDOException.*\"",
+          "expr": "sum by (endpoint) (rate(laravel_http_response_time_seconds_sum{endpoint=~\"test-observability.*\"}[5m])) / sum by (endpoint) (rate(laravel_http_response_time_seconds_count{endpoint=~\"test-observability.*\"}[5m]))",
+          "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
-      "options": {
-        "showTime": true,
-        "wrapLogMessage": true,
-        "enableLogDetails": true
-      }
+      "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 10 } } }
+    },
+    {
+      "id": 7,
+      "title": "DB Error Log Stream",
+      "type": "logs",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{job=\"laravel_app\"} | json | __error__ = \"\" | message =~ \"SQLSTATE|QueryException|PDOException\"",
+          "refId": "A"
+        }
+      ],
+      "options": { "showTime": true, "wrapLogMessage": true, "enableLogDetails": true }
     }
   ]
 }

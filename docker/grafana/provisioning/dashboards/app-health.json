@@ -5,7 +5,7 @@
   "tags": ["laravel", "application", "health"],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 3,
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
   "panels": [
@@ -124,7 +124,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "increase(laravel_orders_created_total[1h])",
+          "expr": "sum(laravel_orders_created_total) or vector(0)",
           "legendFormat": "Orders",
           "refId": "A"
         }
@@ -144,7 +144,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "increase(laravel_login_failed_total[1h])",
+          "expr": "sum(increase(laravel_login_failed_total[1h])) or vector(0)",
           "legendFormat": "Failures",
           "refId": "A"
         }

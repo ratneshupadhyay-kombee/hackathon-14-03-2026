@@ -28,9 +28,10 @@ datasources:
     jsonData:
       derivedFields:
         - datasourceUid: tempo
-          matcherRegex: '"trace_id":"([0-9a-f]+)"'
+          matcherRegex: "trace_id\":\"([a-f0-9]+)\""
           name: TraceID
-          url: "$${__value.raw}"
+          url: "${__value.raw}"
+          urlDisplayLabel: "View Trace in Tempo"
 
   - name: Tempo
     type: tempo
@@ -39,3 +40,11 @@ datasources:
     url: http://hackathon_tempo:3200
     access: proxy
     editable: true
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: "-1m"
+        spanEndTimeShift: "1m"
+        filterByTraceID: true
+      nodeGraph:
+        enabled: true

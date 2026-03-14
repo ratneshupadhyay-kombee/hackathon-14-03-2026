@@ -43,5 +43,32 @@ class AppServiceProvider extends ServiceProvider
             );
             $counter->inc();
         });
+
+        \App\Models\Product::created(function () {
+            try {
+                $metrics = app(\App\Services\MetricsService::class);
+                $metrics->getRegistry()->getOrRegisterCounter(
+                    'laravel', 'products_created_total', 'Total products created'
+                )->inc();
+            } catch (\Throwable) {}
+        });
+
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Validation\ValidationException::class,
+            function (\Illuminate\Validation\ValidationException $e) {
+                try {
+                    $metrics = app(\App\Services\MetricsService::class);
+                    $counter = $metrics->getRegistry()->getOrRegisterCounter(
+                        'laravel',
+                        'validation_errors_total',
+                        'Total number of validation errors'
+                    );
+                    $counter->inc();
+                    \Illuminate\Support\Facades\Log::warning('Validation error', [
+                        'errors' => $e->errors(),
+                    ]);
+                } catch (\Throwable) {}
+            }
+        );
     }
 }

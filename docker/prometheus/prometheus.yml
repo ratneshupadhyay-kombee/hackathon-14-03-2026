@@ -1,5 +1,6 @@
 global:
   scrape_interval: 15s
+  evaluation_interval: 15s
 
 scrape_configs:
   - job_name: 'prometheus'
@@ -7,5 +8,8 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   - job_name: 'laravel-app'
+    metrics_path: '/metrics'
     static_configs:
-      - targets: ['hackathon_nginx:80']
+      - targets: ['host.docker.internal:8001']
+    # Fallback: if host.docker.internal doesn't resolve, use the gateway IP
+    # - targets: ['172.19.0.1:8001']

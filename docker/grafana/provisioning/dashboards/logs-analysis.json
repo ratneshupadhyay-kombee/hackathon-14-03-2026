@@ -5,7 +5,7 @@
   "tags": ["laravel", "logs", "security", "errors"],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 4,
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
   "panels": [
@@ -26,38 +26,30 @@
         "defaults": {
           "unit": "short",
           "color": { "mode": "fixed", "fixedColor": "red" },
-          "custom": {
-            "drawStyle": "bars",
-            "fillOpacity": 70,
-            "lineWidth": 0,
-            "barAlignment": 0
-          }
+          "custom": { "drawStyle": "bars", "fillOpacity": 70, "lineWidth": 0, "barAlignment": 0 }
         }
       }
     },
     {
       "id": 2,
-      "title": "Error Logs by Severity",
+      "title": "Log Count by Severity",
       "type": "piechart",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "sum by (level_name) (count_over_time({job=\"laravel_app\"} | json [1h]))",
+          "expr": "sum by (level_name) (count_over_time({job=\"laravel_app\"} | json | __error__ = \"\" [1h]))",
           "legendFormat": "{{level_name}}",
           "refId": "A"
         }
       ],
-      "options": {
-        "pieType": "donut",
-        "legend": { "displayMode": "table", "placement": "right" }
-      },
+      "options": { "pieType": "donut", "legend": { "displayMode": "table", "placement": "right" } },
       "fieldConfig": {
         "overrides": [
-          { "matcher": { "id": "byName", "options": "DEBUG" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "light-blue" } }] },
-          { "matcher": { "id": "byName", "options": "INFO" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
-          { "matcher": { "id": "byName", "options": "WARNING" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }] },
-          { "matcher": { "id": "byName", "options": "ERROR" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
+          { "matcher": { "id": "byName", "options": "DEBUG" },    "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "light-blue" } }] },
+          { "matcher": { "id": "byName", "options": "INFO" },     "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+          { "matcher": { "id": "byName", "options": "WARNING" },  "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }] },
+          { "matcher": { "id": "byName", "options": "ERROR" },    "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
           { "matcher": { "id": "byName", "options": "CRITICAL" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "dark-red" } }] }
         ]
       }
@@ -70,16 +62,11 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "{job=\"laravel_app\"} | json | message =~ \".*ValidationException.*|.*The .* field.*\"",
+          "expr": "{job=\"laravel_app\"} | json | __error__ = \"\" | message =~ \"ValidationException|The .* field\"",
           "refId": "A"
         }
       ],
-      "options": {
-        "showTime": true,
-        "wrapLogMessage": true,
-        "enableLogDetails": true,
-        "dedupStrategy": "exact"
-      }
+      "options": { "showTime": true, "wrapLogMessage": true, "enableLogDetails": true, "dedupStrategy": "exact" }
     },
     {
       "id": 4,
@@ -89,15 +76,11 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "{job=\"laravel_app\"} | json | level_name =~ \"ERROR|CRITICAL\"",
+          "expr": "{job=\"laravel_app\"} | json | __error__ = \"\" | level_name =~ \"ERROR|CRITICAL\"",
           "refId": "A"
         }
       ],
-      "options": {
-        "showTime": true,
-        "wrapLogMessage": true,
-        "enableLogDetails": true
-      }
+      "options": { "showTime": true, "wrapLogMessage": true, "enableLogDetails": true }
     },
     {
       "id": 5,
@@ -107,7 +90,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(increase(laravel_http_errors_total[5m]))",
+          "expr": "sum(increase(laravel_http_errors_total[5m])) or vector(0)",
           "legendFormat": "Errors",
           "refId": "A"
         }
@@ -115,14 +98,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 5 },
-              { "color": "red", "value": 20 }
-            ]
-          }
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 5 }, { "color": "red", "value": 20 }] }
         }
       }
     },
@@ -134,7 +110,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "increase(laravel_login_failed_total[1h])",
+          "expr": "sum(increase(laravel_login_failed_total[1h])) or vector(0)",
           "legendFormat": "Failures",
           "refId": "A"
         }
@@ -143,14 +119,7 @@
         "defaults": {
           "unit": "short",
           "color": { "mode": "thresholds" },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 5 },
-              { "color": "red", "value": 20 }
-            ]
-          }
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 5 }, { "color": "red", "value": 20 }] }
         }
       }
     },
@@ -162,15 +131,31 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "increase(laravel_orders_created_total[1h])",
+          "expr": "sum(laravel_orders_created_total) or vector(0)",
           "legendFormat": "Orders",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } } }
+    },
+    {
+      "id": 9,
+      "title": "Validation Errors (last 1h)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(laravel_validation_errors_total) or vector(0)",
+          "legendFormat": "Validation Errors",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "color": { "mode": "fixed", "fixedColor": "blue" }
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 50 }] }
         }
       }
     },
@@ -178,20 +163,40 @@
       "id": 8,
       "title": "All Logs (Full Stream)",
       "type": "logs",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "{job=\"laravel_app\"} | json",
+          "expr": "{job=\"laravel_app\"} | json | __error__ = \"\"",
           "refId": "A"
         }
       ],
-      "options": {
-        "showTime": true,
-        "wrapLogMessage": false,
-        "enableLogDetails": true,
-        "prettifyLogMessage": true
-      }
+      "options": { "showTime": true, "wrapLogMessage": false, "enableLogDetails": true, "prettifyLogMessage": true }
+    },
+    {
+      "id": 10,
+      "title": "Logs Filtered by trace_id (use variable)",
+      "type": "logs",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 30 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{job=\"laravel_app\"} | json | __error__ = \"\" | trace_id =~ \"$trace_id\"",
+          "refId": "A"
+        }
+      ],
+      "options": { "showTime": true, "wrapLogMessage": true, "enableLogDetails": true }
     }
-  ]
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "trace_id",
+        "type": "textbox",
+        "label": "Trace ID",
+        "current": { "value": ".*" },
+        "options": [{ "value": ".*", "text": ".*" }]
+      }
+    ]
+  }
 }

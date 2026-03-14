@@ -12,6 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\LogContextMiddleware::class);
+        $middleware->append(\App\Http\Middleware\OpenTelemetryMiddleware::class);
         $middleware->append(\App\Http\Middleware\PrometheusMetricsMiddleware::class);
         
         $middleware->validateCsrfTokens(except: [
@@ -19,5 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->report(function (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Unhandled exception', [
+                'exception' => get_class($e),
+                'message'   => $e->getMessage(),
+                'file'      => $e->getFile(),
+                'line'      => $e->getLine(),
+            ]);
+        });
     })->create();

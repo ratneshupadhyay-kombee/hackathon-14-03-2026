@@ -26,10 +26,12 @@ class OpenTelemetryServiceProvider extends ServiceProvider
                     return \OpenTelemetry\API\Trace\NoopTracer::getInstance();
                 }
 
-                $resource = ResourceInfoFactory::emptyResource()->merge(ResourceInfo::create([
-                    ResourceAttributes::SERVICE_NAME => 'laravel_app',
-                    ResourceAttributes::SERVICE_VERSION => '1.0.0',
-                ]));
+                $resource = ResourceInfoFactory::emptyResource()->merge(ResourceInfo::create(
+                    \OpenTelemetry\SDK\Common\Attribute\Attributes::create([
+                        ResourceAttributes::SERVICE_NAME    => 'laravel_app',
+                        ResourceAttributes::SERVICE_VERSION => '1.0.0',
+                    ])
+                ));
 
                 // Use a very short timeout for the transport
                 $transport = (new OtlpHttpTransportFactory())->create(

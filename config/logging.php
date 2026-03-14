@@ -55,7 +55,7 @@ return [
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),
-            'ignore_exceptions' => false,
+            'ignore_exceptions' => true,
         ],
 
         'loki' => [
@@ -63,6 +63,9 @@ return [
             'path' => storage_path('logs/laravel-json.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'formatter' => \Monolog\Formatter\JsonFormatter::class,
+            'formatter_with' => [
+                'includeStacktraces' => false,
+            ],
         ],
 
         'single' => [

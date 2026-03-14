@@ -23,6 +23,8 @@ class ProductForm extends Component
     {
         $this->validate();
 
+        $savedName = $this->name;
+
         Product::create([
             'name'      => $this->name,
             'price'     => $this->price,
@@ -34,7 +36,7 @@ class ProductForm extends Component
         $this->is_active = true;
 
         $this->dispatch('pg:eventRefresh-product-table');
-        session()->flash('status', "Product '{$this->name}' created successfully.");
+        session()->flash('status', "Product '{$savedName}' created successfully.");
     }
 
     public function render()

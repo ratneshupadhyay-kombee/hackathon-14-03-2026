@@ -5,6 +5,8 @@ namespace App\Livewire;
 use App\Models\Order;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Validate;
 use PowerComponents\LivewirePowerGrid\Button;
 use PowerComponents\LivewirePowerGrid\Column;
 use PowerComponents\LivewirePowerGrid\Facades\Filter;
@@ -19,6 +21,18 @@ final class OrderTable extends PowerGridComponent
     use WithExport;
 
     public string $tableName = 'order-table';
+
+    // Edit modal state
+    public ?int $editingOrderId = null;
+
+    #[Validate('required|min:3')]
+    public string $editOrderNumber = '';
+
+    #[Validate('required|numeric|min:0')]
+    public string $editTotalAmount = '';
+
+    #[Validate('required|in:pending,processing,completed,cancelled')]
+    public string $editStatus = 'pending';
 
     public function setUp(): array
     {
@@ -73,21 +87,11 @@ final class OrderTable extends PowerGridComponent
     public function columns(): array
     {
         return [
-            Column::make('#', 'id')
-                ->sortable(),
-
-            Column::make('Order #', 'order_number')
-                ->sortable()
-                ->searchable(),
-
-            Column::make('Amount', 'total_amount_formatted', 'total_amount')
-                ->sortable(),
-
+            Column::make('#', 'id')->sortable(),
+            Column::make('Order #', 'order_number')->sortable()->searchable(),
+            Column::make('Amount', 'total_amount_formatted', 'total_amount')->sortable(),
             Column::make('Status', 'status_badge', 'status'),
-
-            Column::make('Created', 'created_at_formatted', 'created_at')
-                ->sortable(),
-
+            Column::make('Created', 'created_at_formatted', 'created_at')->sortable(),
             Column::action('Actions'),
         ];
     }
@@ -108,15 +112,65 @@ final class OrderTable extends PowerGridComponent
         ];
     }
 
+    // ── Edit ──────────────────────────────────────────────────────────────────
+
+    #[\Livewire\Attributes\On('edit-order')]
+    public function openEdit(int $rowId): void
+    {
+        $order = Order::findOrFail($rowId);
+        $this->editingOrderId  = $order->id;
+        $this->editOrderNumber = $order->order_number;
+        $this->editTotalAmount = (string) $order->total_amount;
+        $this->editStatus      = $order->status;
+    }
+
+    public function saveEdit(): void
+    {
+        $this->validateOnly('editOrderNumber');
+        $this->validateOnly('editTotalAmount');
+        $this->validateOnly('editStatus');
+
+        $order = Order::findOrFail($this->editingOrderId);
+
+        // Unique check excluding self
+        $this->validate([
+            'editOrderNumber' => 'required|min:3|unique:orders,order_number,' . $order->id,
+            'editTotalAmount' => 'required|numeric|min:0',
+            'editStatus'      => 'required|in:pending,processing,completed,cancelled',
+        ]);
+
+        $order->update([
+            'order_number' => $this->editOrderNumber,
+            'total_amount' => $this->editTotalAmount,
+            'status'       => $this->editStatus,
+        ]);
+
+        Log::info('Order updated', ['order_id' => $order->id, 'status' => $this->editStatus]);
+
+        $this->cancelEdit();
+        session()->flash('message', "Order #{$order->order_number} updated successfully.");
+        $this->dispatch('pg:eventRefresh-order-table');
+    }
+
+    public function cancelEdit(): void
+    {
+        $this->editingOrderId  = null;
+        $this->editOrderNumber = '';
+        $this->editTotalAmount = '';
+        $this->editStatus      = 'pending';
+        $this->resetValidation();
+    }
+
+    // ── Status Update (Complete button) ──────────────────────────────────────
+
     #[\Livewire\Attributes\On('update-order-status')]
-    public function updateOrderStatus($rowId, $status): void
+    public function updateOrderStatus(int $rowId, string $status): void
     {
         $tracer = app(\OpenTelemetry\API\Trace\TracerInterface::class);
-        $span = $tracer->spanBuilder('Livewire Action: updateOrderStatus')
+        $span   = $tracer->spanBuilder('Livewire Action: updateOrderStatus')
             ->setAttribute('order.rowId', $rowId)
             ->setAttribute('order.status', $status)
             ->startSpan();
-            
         $scope = $span->activate();
 
         try {
@@ -134,23 +188,33 @@ final class OrderTable extends PowerGridComponent
         }
     }
 
+    // ── Delete ────────────────────────────────────────────────────────────────
+
     #[\Livewire\Attributes\On('delete-order')]
-    public function deleteOrder($rowId): void
+    public function deleteOrder(int $rowId): void
     {
         $order = Order::find($rowId);
         if ($order) {
             $num = $order->order_number;
             $order->delete();
+            Log::info('Order deleted', ['order_number' => $num]);
             session()->flash('message', "Order #{$num} deleted successfully.");
         }
         $this->dispatch('pg:eventRefresh-order-table');
     }
 
+    // ── Actions ───────────────────────────────────────────────────────────────
+
     public function actions(Order $row): array
     {
         return [
+            Button::add('edit-order')
+                ->slot('Edit')
+                ->class('px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-medium rounded-lg border border-indigo-200 transition-colors mr-1')
+                ->dispatch('edit-order', ['rowId' => $row->id]),
+
             Button::add('mark-complete')
-                ->slot('✅ Complete')
+                ->slot('Complete')
                 ->class('px-2.5 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 text-xs font-medium rounded-lg border border-green-200 transition-colors mr-1')
                 ->dispatch('update-order-status', ['rowId' => $row->id, 'status' => 'completed']),
 

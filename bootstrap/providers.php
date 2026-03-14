@@ -3,5 +3,5 @@
 return [
     App\Providers\AppServiceProvider::class,
     App\Providers\VoltServiceProvider::class,
-    // App\Providers\OpenTelemetryServiceProvider::class,
+    App\Providers\OpenTelemetryServiceProvider::class,
 ];
