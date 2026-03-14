@@ -1,0 +1,148 @@
+services:
+  # --- Laravel Application (PHP-FPM) ---
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hackathon_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+    networks:
+      - hackathon_network
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+  # --- Nginx Web Server ---
+  webserver:
+    image: nginx:alpine
+    container_name: hackathon_nginx
+    restart: unless-stopped
+    ports:
+      - "8001:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - hackathon_network
+    depends_on:
+      - app
+
+  # --- MySQL Database ---
+  db:
+    image: mysql:8.0
+    container_name: hackathon_db
+    restart: unless-stopped
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - hackathon_network
+
+  # --- Prometheus (Metrics) ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: hackathon_prometheus
+    restart: unless-stopped
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - promdata:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    networks:
+      - hackathon_network
+
+  # --- Grafana (Visualization) ---
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hackathon_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - hackathon_network
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+  # --- Loki (Logs) ---
+  loki:
+    image: grafana/loki:latest
+    container_name: hackathon_loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docker/loki/loki-config.yml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - hackathon_network
+
+  # --- Tempo (Traces) ---
+  tempo:
+    image: grafana/tempo:2.4.1
+    container_name: hackathon_tempo
+    user: root
+    restart: unless-stopped
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./docker/tempo/tempo.yml:/etc/tempo.yaml
+      - tempodata:/var/tempo
+    ports:
+      - "3200:3200"   # Tempo
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP http
+    networks:
+      - hackathon_network
+
+  # --- Redis (Cache/Metrics Storage) ---
+  redis:
+    image: redis:alpine
+    container_name: hackathon_redis
+    restart: unless-stopped
+    networks:
+      - hackathon_network
+
+  # --- Promtail (Agent to send logs to Loki) ---
+  promtail:
+    image: grafana/promtail:latest
+    container_name: hackathon_promtail
+    volumes:
+      - ./docker/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml
+      - ./storage/logs:/var/www/html/storage/logs # Mount Laravel logs directory
+    command: -config.file=/etc/promtail/promtail-config.yml
+    networks:
+      - hackathon_network
+    depends_on:
+      - loki
+
+networks:
+  hackathon_network:
+    driver: bridge
+
+volumes:
+  dbdata:
+  promdata:
+  grafanadata:
+  tempodata:
