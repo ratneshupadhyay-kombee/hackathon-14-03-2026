@@ -5,7 +5,7 @@
   "tags": ["laravel", "logs", "security", "errors"],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 4,
+  "version": 5,
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
   "panels": [
@@ -84,13 +84,13 @@
     },
     {
       "id": 5,
-      "title": "Total Errors (last 5m)",
+      "title": "Total Errors (last 1h)",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 16 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(increase(laravel_http_errors_total[5m])) or vector(0)",
+          "expr": "sum(increase(laravel_http_errors_total[1h])) or vector(0)",
           "legendFormat": "Errors",
           "refId": "A"
         }

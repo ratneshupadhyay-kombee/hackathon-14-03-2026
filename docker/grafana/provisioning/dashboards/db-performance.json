@@ -5,7 +5,7 @@
   "tags": ["laravel", "database", "mysql"],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 3,
+  "version": 5,
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
   "panels": [
@@ -50,13 +50,13 @@
     },
     {
       "id": 3,
-      "title": "Slow Queries Log Stream (> 500ms)",
+      "title": "Slow Queries Log Stream (> 100ms)",
       "type": "logs",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 8 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "{job=\"laravel_app\"} | json | __error__ = \"\" | db_execution_time_ms > 500",
+          "expr": "{job=\"laravel_app\"} | json | __error__ = \"\" | db_execution_time_ms > 100",
           "refId": "A"
         }
       ],
@@ -70,7 +70,7 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "sum(count_over_time({job=\"laravel_app\"} | json | __error__ = \"\" | message =~ \"SQLSTATE|QueryException|PDOException\" [5m]))",
+          "expr": "sum(count_over_time({job=\"laravel_app\"} | json | __error__ = \"\" | message =~ \"SQLSTATE|QueryException|PDOException|DB QueryException\" [5m]))",
           "legendFormat": "DB Errors",
           "refId": "A"
         }
@@ -120,7 +120,7 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "{job=\"laravel_app\"} | json | __error__ = \"\" | message =~ \"SQLSTATE|QueryException|PDOException\"",
+          "expr": "{job=\"laravel_app\"} | json | __error__ = \"\" | message =~ \"SQLSTATE|QueryException|PDOException|DB QueryException\"",
           "refId": "A"
         }
       ],

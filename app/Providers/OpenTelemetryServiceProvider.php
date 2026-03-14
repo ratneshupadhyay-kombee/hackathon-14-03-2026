@@ -58,22 +58,30 @@ class OpenTelemetryServiceProvider extends ServiceProvider
     {
         try {
             DB::listen(function (QueryExecuted $query) {
+                // Always log DB queries as structured JSON for Loki
+                \Illuminate\Support\Facades\Log::debug('DB query executed', [
+                    'db_system'            => 'mysql',
+                    'db_statement'         => $query->sql,
+                    'db_execution_time_ms' => round($query->time, 2),
+                    'db_connection'        => $query->connection->getName(),
+                ]);
+
                 // Resolve tracer defensively
                 if (!app()->bound(TracerInterface::class)) {
                     return;
                 }
-                
+
                 $tracer = app(TracerInterface::class);
                 if ($tracer instanceof \OpenTelemetry\API\Trace\NoopTracer) {
                     return;
                 }
-                
+
                 $span = $tracer->spanBuilder('DB ' . $query->connection->getName())
                     ->setAttribute('db.system', 'mysql')
                     ->setAttribute('db.statement', $query->sql)
                     ->setAttribute('db.execution_time_ms', $query->time)
                     ->startSpan();
-                    
+
                 $span->end();
             });
         } catch (\Throwable $e) {

@@ -5,7 +5,7 @@
   "tags": ["laravel", "application", "health"],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 3,
+  "version": 4,
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
   "panels": [
@@ -193,7 +193,7 @@
       "gridPos": { "h": 4, "w": 24, "x": 0, "y": 23 },
       "options": {
         "mode": "html",
-        "content": "<div style='display: flex; gap: 20px; justify-content: center; font-size: 16px;'>\n  <a href='/test-observability/slow' target='_blank' style='color: #ffa500; font-weight: bold;'>⚡ Trigger SLOW (+3s)</a>\n  <a href='/test-observability/error' target='_blank' style='color: #ff4d4d; font-weight: bold;'>⚠️ Trigger RANDOM ERROR</a>\n  <a href='/test-observability/db-load' target='_blank' style='color: #4da6ff; font-weight: bold;'>💾 Trigger DB N+1</a>\n  <a href='/test-observability/heavy' target='_blank' style='color: #cc66ff; font-weight: bold;'>🐘 Trigger HEAVY PAYLOAD</a>\n</div>"
+        "content": "<div style='display: flex; gap: 20px; justify-content: center; font-size: 16px; flex-wrap: wrap;'>\n  <a href='/test-observability/slow' target='_blank' style='color: #ffa500; font-weight: bold;'>⚡ Trigger SLOW (+3s)</a>\n  <a href='/test-observability/error' target='_blank' style='color: #ff4d4d; font-weight: bold;'>⚠️ Trigger RANDOM ERROR</a>\n  <a href='/test-observability/db-load' target='_blank' style='color: #4da6ff; font-weight: bold;'>💾 Trigger DB N+1</a>\n  <a href='/test-observability/heavy' target='_blank' style='color: #cc66ff; font-weight: bold;'>🐘 Trigger HEAVY PAYLOAD</a>\n  <a href='/test-observability/seed-counters' target='_blank' style='color: #00cc88; font-weight: bold;'>📦 Seed Order Counters</a>\n  <a href='/test-observability/db-error' target='_blank' style='color: #ff6666; font-weight: bold;'>💥 Trigger DB Error</a>\n</div>"
       }
     },
     {

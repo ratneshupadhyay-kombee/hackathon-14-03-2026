@@ -70,18 +70,43 @@ Route::prefix('test-observability')->group(function () {
         return response()->json(['status' => 'authenticated']);
     });
 
-    // 6. Stress Test: Order Creation (for k6)
+    // 6. Stress Test: Order Creation (for k6 and counter seeding)
     Route::post('/stress-order', function (\Illuminate\Http\Request $request) {
         $order = \App\Models\Order::create([
             'order_number' => 'STRESS-' . uniqid(),
             'total_amount' => rand(10, 500),
             'status' => 'completed',
         ]);
-        
-        // Log it to see in Loki
         Log::info("Stress Test: Created Order", ['id' => $order->id, 'total' => $order->total_amount]);
-        
         return response()->json(['status' => 'success', 'order_id' => $order->id]);
+    });
+
+    // 7. Seed orders/products to populate Prometheus counters
+    Route::get('/seed-counters', function () {
+        $created = 0;
+        for ($i = 0; $i < 5; $i++) {
+            \App\Models\Order::create([
+                'order_number' => 'SEED-' . uniqid(),
+                'total_amount' => rand(10, 500),
+                'status'       => 'completed',
+            ]);
+            $created++;
+        }
+        Log::info("Counter Seed: Created {$created} orders for Prometheus counter population");
+        return response()->json(['status' => 'ok', 'orders_created' => $created]);
+    });
+
+    // 8. Trigger a DB error for the DB Error Count panel
+    Route::get('/db-error', function () {
+        try {
+            \Illuminate\Support\Facades\DB::statement('SELECT * FROM non_existent_table_xyz');
+        } catch (\Throwable $e) {
+            Log::error('DB QueryException: ' . $e->getMessage(), [
+                'exception_class' => get_class($e),
+            ]);
+            return response()->json(['status' => 'db_error_triggered', 'message' => $e->getMessage()]);
+        }
+        return response()->json(['status' => 'no_error']);
     });
 });
 

@@ -24,32 +24,21 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\Event::listen(
             \Illuminate\Auth\Events\Failed::class,
             function () {
-                $metrics = app(\App\Services\MetricsService::class);
-                $counter = $metrics->getRegistry()->getOrRegisterCounter(
-                    'laravel',
-                    'login_failed_total',
-                    'Total number of failed login attempts'
-                );
-                $counter->inc();
+                try {
+                    app(\App\Services\MetricsService::class)->increment('laravel_login_failed_total');
+                } catch (\Throwable) {}
             }
         );
 
         \App\Models\Order::created(function () {
-            $metrics = app(\App\Services\MetricsService::class);
-            $counter = $metrics->getRegistry()->getOrRegisterCounter(
-                'laravel',
-                'orders_created_total',
-                'Total number of generated orders'
-            );
-            $counter->inc();
+            try {
+                app(\App\Services\MetricsService::class)->increment('laravel_orders_created_total');
+            } catch (\Throwable) {}
         });
 
         \App\Models\Product::created(function () {
             try {
-                $metrics = app(\App\Services\MetricsService::class);
-                $metrics->getRegistry()->getOrRegisterCounter(
-                    'laravel', 'products_created_total', 'Total products created'
-                )->inc();
+                app(\App\Services\MetricsService::class)->increment('laravel_products_created_total');
             } catch (\Throwable) {}
         });
 
@@ -57,16 +46,8 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Validation\ValidationException::class,
             function (\Illuminate\Validation\ValidationException $e) {
                 try {
-                    $metrics = app(\App\Services\MetricsService::class);
-                    $counter = $metrics->getRegistry()->getOrRegisterCounter(
-                        'laravel',
-                        'validation_errors_total',
-                        'Total number of validation errors'
-                    );
-                    $counter->inc();
-                    \Illuminate\Support\Facades\Log::warning('Validation error', [
-                        'errors' => $e->errors(),
-                    ]);
+                    app(\App\Services\MetricsService::class)->increment('laravel_validation_errors_total');
+                    \Illuminate\Support\Facades\Log::warning('Validation error', ['errors' => $e->errors()]);
                 } catch (\Throwable) {}
             }
         );
